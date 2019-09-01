@@ -1,0 +1,126 @@
+---
+title: "DATA607_Week1"
+author: "Don G. Padmaperuma"
+date: "8/31/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+```
+
+### Loading Data into Data Frame  
+**Mushroom Dataset** A famous-if slightly moldy-dataset about mushrooms can be found in the UCI repository here: https://archive.ics.uci.edu/ml/datasets/Mushroom.  The fact that this is such a well-known dataset in the data science community makes it a good dataset to use for comparative benchmarking.  For example, if someone was working to build a better decision tree algorithm (or other predictive classifier) to analyze categorical data, this dataset could be useful.  A typical problem (which is beyond the scope of this assignment!) is to answer the question, “Which other attribute or attributes are the best predictors of whether a particular mushroom is poisonous or edible?” Your task is to study the dataset and the associated description of the data (i.e. “data dictionary”).  You may need to look around a bit, but it’s there!  You should take the data, and create a data frame with a subset of the columns in the dataset.  You should include the column that indicates edible or poisonous and three or four other columns.  You should also add meaningful column names and replace the abbreviations used in the data—for example, in the appropriate column, "e" might become "edible." Your deliverable is R code to perform these transformation taskes.  
+
+### Read Mushroom Dataset
+```{r}
+#Read CSV file
+mushroomData <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data", header = FALSE, sep = ",")
+head(mushroomData)
+```
+### Read Data Dictionary
+```{r}
+mushroomData_dictionary <- read.table("./mushroom_attributes.txt", row.names = 1, sep = ":") 
+print(mushroomData_dictionary)
+```
+### Apply Headers
+```{r}
+names(mushroomData)<-row.names(mushroomData_dictionary)
+head(mushroomData)
+```
+### Change abbreviations for each attribute values
+```{r}
+#change classes values as follows: edible=e, poisonous=p
+mushroomData$classes <- as.character(mushroomData$classes)
+mushroomData$classes[mushroomData$classes == "e"]<-"edible"
+mushroomData$classes[mushroomData$classes == "p"]<-"poisonous"
+#change cap-color values as follows: brown=n,buff=b,cinnamon=c,gray=g,green=r,pink=p,purple=u,red=e,white=w,yellow=y
+mushroomData$capcolor<- as.character(mushroomData$capcolor)
+mushroomData$capcolor[mushroomData$capcolor=="n"]<-"brown"
+mushroomData$capcolor[mushroomData$capcolor=="b"]<-"buff"
+mushroomData$capcolor[mushroomData$capcolor=="c"]<-"cinnamon"
+mushroomData$capcolor[mushroomData$capcolor=="g"]<-"gray"
+mushroomData$capcolor[mushroomData$capcolor=="r"]<-"green"
+mushroomData$capcolor[mushroomData$capcolor=="p"]<-"pink"
+mushroomData$capcolor[mushroomData$capcolor=="u"]<-"purple"
+mushroomData$capcolor[mushroomData$capcolor=="e"]<-"red"
+mushroomData$capcolor[mushroomData$capcolor=="w"]<-"white"
+mushroomData$capcolor[mushroomData$capcolor=="y"]<-"yellow"
+mushroomData$capcolor[mushroomData$capcolor=="n"]<-"brown"
+#change odor values as follows: almond=a,anise=l,creosote=c,fishy=y,foul=f,musty=m,none=n,pungent=p,spicy=s
+mushroomData$odor <- as.character(mushroomData$odor)
+mushroomData$odor[mushroomData$odor == "a"]<-"almond"
+mushroomData$odor[mushroomData$odor == "l"]<-"anise"
+mushroomData$odor[mushroomData$odor == "c"]<-"creosote"
+mushroomData$odor[mushroomData$odor == "y"]<-"fishy"
+mushroomData$odor[mushroomData$odor == "f"]<-"foul"
+mushroomData$odor[mushroomData$odor == "m"]<-"musty"
+mushroomData$odor[mushroomData$odor == "n"]<-"none"
+mushroomData$odor[mushroomData$odor == "p"]<-"pungent"
+mushroomData$odor[mushroomData$odor == "s"]<-"spicy"
+#change population values as follows: abundant=a,clustered=c,numerous=n,scattered=s,several=v,solitary=y
+mushroomData$population <- as.character(mushroomData$population)
+mushroomData$population[mushroomData$population == "a"]<-"abundant"
+mushroomData$population[mushroomData$population == "c"]<-"clustered"
+mushroomData$population[mushroomData$population == "n"]<-"numerous"
+mushroomData$population[mushroomData$population == "s"]<-"scattered"
+mushroomData$population[mushroomData$population == "v"]<-"several"
+mushroomData$population[mushroomData$population == "y"]<-"solitary"
+#change habitat values as follows:grasses=g,leaves=l,meadows=m,paths=p,urban=u,waste=w,woods=d
+mushroomData$habitat <- as.character(mushroomData$habitat)
+mushroomData$habitat[mushroomData$habitat == "g"]<-"grasses"
+mushroomData$habitat[mushroomData$habitat == "l"]<-"leaves"
+mushroomData$habitat[mushroomData$habitat == "m"]<-"meadows"
+mushroomData$habitat[mushroomData$habitat == "p"]<-"paths"
+mushroomData$habitat[mushroomData$habitat == "u"]<-"urban"
+mushroomData$habitat[mushroomData$habitat == "w"]<-"waste"
+mushroomData$habitat[mushroomData$habitat == "d"]<-"woods"
+head(mushroomData)
+```
+### Subset out of mushroom dataset
+```{r}
+names(mushroomData)
+```
+
+```{r}
+#create a subset with columns: classes, cap-color, odor, population and habitat
+mushroomData_subset <- subset(mushroomData, select = c(classes, capcolor, odor, population, habitat))
+print(mushroomData_subset)
+```
+### Details of the new data set
+```{r}
+str(mushroomData_subset)
+```
+### find out how many are poisonous
+```{r}
+sum(mushroomData_subset == 'poisonous')
+```
+###class distribution - poisonous
+```{r}
+poison <- sum(mushroomData_subset$classes == 'poisonous')/nrow(mushroomData_subset)
+poison_dist <- poison*100
+sprintf('Poisonous class : %.1f%%',poison*100)
+```
+```{r}
+poisonousMushroom_subset <- subset(mushroomData, classes == 'poisonous',select = c(classes, capcolor, odor, population, habitat))
+print(poisonousMushroom_subset)
+```
+```{r}
+#details of the poisonous mushroom subset
+str(poisonousMushroom_subset)
+```
+### After observing the subsets, it seems like poisonous mushroom in urban habitats have a pungent odor and white and brown cap color.
+#### Bar Plots
+```{r}
+#Bar plots
+ggplot(mushroomData_subset, mapping = aes(mushroomData_subset$habitat))+
+  geom_bar(aes(fill=mushroomData_subset$classes))+
+  xlab('Mushroom Habitat')+labs(fill='class')+geom_text(stat = 'count', aes(label=..count..,y=..count..),vjust=0.2)+
+  ggtitle('Mushroom Habitat and class')
+```
+
+
+
