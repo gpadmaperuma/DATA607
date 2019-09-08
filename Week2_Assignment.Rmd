@@ -1,0 +1,82 @@
+---
+title: "DATA607_Week2_Assignment"
+author: "Don Padmaperuma"
+date: "9/7/2019"
+output: html_document
+---
+### Assignment – SQL and R
+Choose six recent popular movies. Ask at least five people that you know (friends, family, classmates,imaginary friends) to rate each of these movie that they have seen on a scale of 1 to 5. Take the results(observations) and store them in a SQL database. Load the information into an R dataframe.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Load Appropriate Packages
+
+```{r}
+library(RMySQL)
+```
+### Establish Connection
+
+```{r}
+
+con <- dbConnect(MySQL(),
+                  user = "root", 
+                  password = "spring2019",
+                  dbname = "movieratings",
+                  host = "localhost"
+                     )
+```
+
+Queries to get data from the SQL database
+```{r}
+query <- "select * from rating;"
+res <- dbGetQuery(con, query)
+res
+```
+### Load data into a R dataframe
+```{r}
+
+my_movie_ratings <- res
+head(my_movie_ratings)
+
+```
+### Analyse Data using summary and graphs
+
+```{r}
+summary(my_movie_ratings)
+```
+```{r}
+query1 <- "select * from rating;"
+res <- dbGetQuery(con, query)
+movie.rating <- data.frame(res)
+
+query2 <- "select Name, The_Lion_King_2019 from rating;"
+
+Lion_King_Rating <- dbGetQuery(con, query2)
+Lion_King_Rating
+
+```
+```{r}
+library(ggplot2)
+ggplot(data = Lion_King_Rating, aes(Lion_King_Rating$Name, Lion_King_Rating$The_Lion_King_2019)) + geom_point(aes(color = "Rating 1-5")) + geom_smooth(method = "lm")
+```
+```{r}
+query3 <- "select Name, Disney_Aladdin from rating;"
+Disney_Aladdin_rating <- dbGetQuery(con, query3)
+Disney_Aladdin_rating
+
+```
+```{r}
+ggplot(data = Disney_Aladdin_rating, aes(Disney_Aladdin_rating$Name, Disney_Aladdin_rating$Disney_Aladdin))+ geom_point(aes(color = "Rating 1-5")) + geom_smooth(method = "lm")
+```
+
+### Disconnect from SQL database
+
+```{r}
+dbDisconnect(con)
+```
+
+
+
+
+
