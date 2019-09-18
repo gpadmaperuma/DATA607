@@ -1,0 +1,108 @@
+---
+title: "DATA606_Project1"
+author: "Don Padmaperuma (Geeth)"
+date: "9/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Project 1
+
+##### In this project, you’re given a text file with chess tournament results where the information has some structure. Your job is to create an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database) with the following information for all of the players: 
+##### Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents For the first player, the information would be:
+##### Gary Hua, ON, 6.0, 1794, 1605
+##### 1605 was calculated by using the pre-tournament opponents’ ratings of 1436, 1563, 1600, 1610, 1649, 1663, 1716, and dividing by the total number of games played.
+##### If you have questions about the meaning of the data or the results, please post them on the discussion forum. Data science, like chess, is a game of back and forth…
+##### The chess rating system (invented by a Minnesota statistician named Arpad Elo) has been used in many other contexts,including assessing relative strength of employment candidates by human resource departments.You may substitute another text file (or set of text files, or data scraped from web pages) of similar or greater complexity, and create your own assignment and solution. You may work in a small team. All of your code should be in an R markdown file (and published to rpubs.com); with your data accessible for the person running the script.
+
+```{r}
+tournamentinfo <- "https://raw.githubusercontent.com/spitakiss/Data607_Project1/master/tournamentinfo.txt"
+```
+
+```{r}
+library(stringr)
+results <- readLines(tournamentinfo,warn = FALSE)
+```
+
+```{r}
+# extract player's name
+Player_Name <- matrix(unlist(str_extract_all(results, "\\w+[^USCF|a-z] ?\\w+ \\w+")))
+Player_Name
+```
+```{r}
+# extract Player's State
+Player_state <- matrix(unlist(str_extract_all(results, "(?:^|\\W)ON | MI | OH(?:$|\\W)")))
+Player_state
+```
+```{r}
+# extract Total number of points
+Tot_Points <- matrix(unlist(str_extract_all(results, "\\d\\.\\d")))
+Tot_Points
+```
+```{r}
+# extract Player's pre rating
+Pre_Rate1 <- unlist(str_extract_all(results, "(R:\\s*)(\\d+)"))
+Player_Pre_Rating <- matrix(unlist(str_extract_all(Pre_Rate1, "(\\d+)")))
+Player_Pre_Rating <- as.numeric(Player_Pre_Rating)
+Player_Pre_Rating
+```
+
+```{r}
+# extract the full line of text that starts with "|" and a number.
+avg_opponent_step1 <- unlist(str_extract_all(results, "\\|[0-9].*"))
+
+avg_opponent_step1[16]
+```
+```{r}
+# used str_replace to replace empty spaces with 00 in the data.
+avg_opponent_step2 <- str_replace_all(avg_opponent_step1, "\\s{1,2}\\|","00|")
+
+avg_opponent_step2[16]
+```
+```{r}
+# extract the number of opponent for each round.
+avg_opponent_step3 <- (str_extract_all(avg_opponent_step2, "\\s\\d{1,2}"))
+
+avg_opponent_step3[16]
+```
+```{r}
+# Calculation of the Average Pre Chess Rating of Opponents
+
+#converting the list into a matrix 
+matrix_opponent <- matrix(unlist(avg_opponent_step3), byrow=TRUE, nrow=length(avg_opponent_step3) )
+dim(matrix_opponent)
+```
+```{r}
+new_matrix <- t(apply(matrix_opponent, 1,as.numeric)) 
+dim(new_matrix)
+```
+```{r}
+#replacing each element in the matrix with actual rating for opponents and adding NA if its 0
+for (i in 1:nrow(new_matrix)) 
+  {
+  for (j in 1:ncol(new_matrix))
+    {
+    if (new_matrix[i,j] == 0){
+      new_matrix[i,j] = NA
+    }
+    else{
+      new_matrix[i,j] <- Player_Pre_Rating[new_matrix[i,j]]
+    }
+  }
+}
+# calculating the mean of each row to get the average opponent ratings.
+avg_opponents <- c(round(rowMeans(new_matrix, na.rm = TRUE)))
+avg_opponents
+```
+```{r}
+# Putting all the information together to create a new data frame!
+df <- data.frame(Player_Name, Player_state, Tot_Points, Player_Pre_Rating, avg_opponents)
+colnames(df) <- c("Players Name","Players State", "Total Points", "Players Pre-Rating", "Opponents Avg-Ratings")
+
+# Exporting the result into a CSV file.
+write.csv(df, "Chess_tournamentinfo.csv", row.names=FALSE)
+```
+
