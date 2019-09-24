@@ -1,0 +1,123 @@
+---
+title: "DATA607_WEEK5_Assignment"
+author: "Don Padmaperuma (Geeth)"
+date: "9/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Loading appropriate libraries
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(stringr)
+```
+### Fetching data from a .csv file
+```{r}
+#Read the .csv file as it is while replacing the word "NA" empty cells
+two_airlines<-read.csv("2airlines.csv", stringsAsFactors = FALSE, header=TRUE,fileEncoding = "UTF-8-BOM",sep=",",na.strings = c("","NA"))
+two_airlines
+```
+### Tidying and transforming data for better visualization
+```{r}
+#Rearrange the dataframe removing "NA" fields, changing rows to columns using gather
+two_airlines2 <- two_airlines %>%
+  mutate(Airline=na.locf(X)) %>%
+  mutate(Status=na.locf(X.1)) %>%
+  select(-X) %>% select(-X.1) %>%
+  gather(Destination, Flight, Los..Angeles:Seattle) %>% 
+  drop_na()
+two_airlines2
+```
+```{r}
+library(kableExtra)
+#Spread Status column into two separate columns as delayed and ontime
+colnames(two_airlines2)[2] <- "Status"
+colnames(two_airlines2)[4] <- "Flight"
+two_airlines.alter <- spread(two_airlines2, "Status", "Flight" )
+kable(two_airlines.alter, align = 'c')
+```
+
+```{r}
+#remove characters such as , inside the numbers
+two_airlines.alter$`on time` <- str_remove(two_airlines.alter$`on time`, ",")
+```
+
+```{r}
+#Convert character type to numeric
+as.numeric(two_airlines.alter$`on time`)
+```
+```{r}
+#Convert character type to numeric
+as.numeric(two_airlines.alter$delayed)
+```
+
+```{r}
+#Basic Summary view of the data
+two_airlines.alter$delayed = as.numeric(two_airlines.alter$delayed)
+two_airlines.alter$`on time` = as.numeric(two_airlines.alter$`on time`)
+summary(two_airlines.alter)
+```
+```{r}
+two_airlines.alter %>%
+  group_by(Destination) %>%
+  summarise(SD_OnTime = round(sd(`on time`),2), SD_Delayed = round(sd(delayed),2))
+```
+```{r}
+#Analyse data separately for the airline ALASKA
+flight_status_ALASKA <- two_airlines.alter%>%
+  filter(Airline == "ALASKA")
+flight_status_ALASKA
+```
+```{r}
+#Analyse data separately for the airline ALASKA and calculate its total arrival and delayed percentage
+flight_status_ALASKA <- flight_status_ALASKA %>%
+  mutate(
+    Arrival_Total = flight_status_ALASKA$delayed + flight_status_ALASKA$`on time`,
+    Delay_perc = (flight_status_ALASKA$delayed/Arrival_Total)*100)
+flight_status_ALASKA
+```
+
+
+```{r}
+#Analyse data separately for the airline AMWEST
+flight_status_AMWEST <- two_airlines.alter %>%
+  filter(Airline == "AM WEST")
+flight_status_AMWEST
+```
+```{r}
+#Analyse data separately for the airline AMWEST and calculate its Total arrival and delayed percentage
+flight_status_AMWEST <- flight_status_AMWEST %>%
+  mutate(
+    Arrival_Total = flight_status_AMWEST$delayed + flight_status_AMWEST$`on time`,
+    Delay_perc = (flight_status_AMWEST$delayed/Arrival_Total)*100)
+flight_status_AMWEST
+```
+```{r}
+#Alter the original table with total arrival time and delay percentage for comparison
+two_airlines.alter <- two_airlines.alter %>%
+  mutate(
+    Arrival_Total = two_airlines.alter$delayed + two_airlines.alter$`on time`,
+    Delay_perc = (two_airlines.alter$delayed/Arrival_Total)*100
+  )
+print(two_airlines.alter)
+```
+
+### Based on the data, AM WEST has a higher delay percentage for all the destinations comapred to ALASKA  
+
+```{r}
+#Compare Delay percentage between two airlines using a graph for better visualization
+library(ggplot2)
+ggplot(two_airlines.alter, aes(factor(Destination), Delay_perc, fill = Airline)) +
+  geom_bar(stat = "identity", position = "dodge")+
+  theme_minimal()+
+  labs(x = "Destination", y = "Delayed %")
+
+```
+
+
+
