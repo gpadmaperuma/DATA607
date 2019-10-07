@@ -1,0 +1,331 @@
+---
+title: "DATA607_Project2"
+author: "Don Padmaperuma"
+date: "9/30/2019"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Dataset 1
+
+## International Migrant Stock 2019  
+
+Data Source: United Nations, Department of Economic and Social Affairs. Population Division (2019). International Migrant Stock 2019 (United Nations database, POP/DB/MIG/Stock/Rev.2019).
+
+The dataset presents estimates of international migrant by age, sex and origin. Estimates are presented for 1990, 1995, 2000, 2005, 2010, 2015 and 2019 and are available for all countries and areas of the world. The estimates are based on official statistics on the foreign-born or the foreign population.  
+
+I will be using the International migrant stock by destination and origin data file for this project. 
+
+Screen shot of actual data excel sheet
+
+![](UNdata.jpg)
+
+## Import Libraries  
+
+```{r}
+library(kableExtra)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+```
+
+## Data Transformation  
+
+### Fetch Data  
+
+In this section I will be converting the data into .csv file format and process data to get the final more structured output.
+
+```{r}
+UN_migration_data <- read.delim("UN_MigrantStockByOriginAndDestination_2019.csv", header = TRUE, stringsAsFactors = FALSE, sep = ",")
+head(UN_migration_data) %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>%scroll_box(width = "100%", height = "250px")
+```
+Also I am importing a .cvs file that include country names and the continent map.
+
+```{r}
+### Country to Continenet Map
+countryDF <- read.delim("UNCountryContinentMap.csv",header = TRUE, stringsAsFactors = FALSE, sep = ",")
+```
+
+### Clean the data  
+
+In this section I am eliminating few columns, Renaming some existing columns in the process of cleansing data.I am using **filter()** function and **select()** functions for that.
+
+```{r}
+UN_migration_data <- UN_migration_data %>% filter(Type.of.data..a.!= "")
+UN_migration_data <- UN_migration_data %>% 
+  select(-Sort.order, -Notes, -Code, -Type.of.data..a., -Total, -Other.North, -Other.South)
+names(UN_migration_data)[1] <- "Year"
+names(UN_migration_data)[2] <- "Destination_country"
+head(UN_migration_data) %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width="100%",height="250px")
+```
+
+I Use tidyr function gather() to remove and add some new columns to UN migration dataframe. In this case, I am removing all the country of origin columns which we have for each country and put them under one key column called **origin_country**. All the values will be under the column **no_of_migrants**. 
+
+```{r}
+
+UN_migration_data <- UN_migration_data %>% 
+  gather(key = origin_country, value = "no_of_migrants", -Year, -Destination_country)
+
+UN_migration_data$origin_country <- str_replace_all(UN_migration_data$origin_country, "\\."," ")
+
+UN_migration_data <- UN_migration_data %>% 
+  filter(no_of_migrants != "..")
+UN_migration_data$no_of_migrants <- str_replace_all(UN_migration_data$no_of_migrants, "\\."," ")
+
+UN_migration_data$no_of_migrants <- as.numeric(UN_migration_data$no_of_migrants)
+
+UN_migration_data <- UN_migration_data %>% 
+  filter(!is.na(no_of_migrants))
+
+### Joining Country table and Tag Continent attribute based on destination_country
+
+UN_migration_data <- UN_migration_data %>% 
+  inner_join(countryDF, by = c("Destination_country" = "Country"))
+head(UN_migration_data) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
+  scroll_box(width="100%",height="250px")
+```
+### Analyze Data  
+
+In this sections I will take a look at migration patterns and trends using some graphs. As a first step, I will see data by destination regions. 
+
+```{r}
+migration_summary <- UN_migration_data %>%
+  group_by(Year, Continent) %>%
+  summarise(Total_Migrants = sum(no_of_migrants)) %>%
+  mutate(Total_Migrants = Total_Migrants)
+
+ggplot(migration_summary, aes(x = Continent, y = Total_Migrants, fill = as.character(Year))) +
+  geom_bar(stat = "Identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Total_Migrants,1),"M")), hjust=-0.5, color="black", position = position_dodge(1), size = 2) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(axis.text.x=element_text(angle = 0, vjust = 0.5)) +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+  ggtitle("Migration Trend By Destination Region (1990-2019)") +
+  xlab("Year") +  ylab ("Migrant Total(in Millions)") +
+  coord_flip()
+```
+**This data shows that Europe has become one of the trending destination point.**
+
+Let's look at Top 10 Best Destination Countries
+
+```{r}
+UN_migration_2019 <- UN_migration_data %>%
+  filter(Year == 2019) %>% group_by(Destination_country) %>% summarise(Total_Migrant = sum(no_of_migrants)) %>%
+  mutate(Total_Migrant = Total_Migrant) %>% mutate(rank = rank(-Total_Migrant)) %>%
+  filter(rank <= 10) %>% arrange(rank)
+UN_migration_2019
+```
+According to the table, Czechia or Czech Republic is in the 1st place in migration ranking. Lets look at the bar graph to get an idea.
+
+```{r}
+ggplot(
+  UN_migration_2019, aes(x = reorder(Destination_country,-Total_Migrant), y = Total_Migrant)) + 
+  geom_bar(stat = "identity", position = "dodge", fill = "orange") + 
+  geom_text(aes(label=paste0(round(Total_Migrant,1),"M")), vjust=-0.5, color="black", position = position_dodge(0.9), size=3.5) +
+  scale_fill_brewer(palette="Paired") + 
+  theme(axis.text.x=element_text(angle = 45, vjust = 0.5)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Top 10 Migrant Destination Countries in 2017") +
+  xlab("destination_country") +  ylab ("Migrant Count(in Millions)")
+
+```
+
+# Dataset 2  
+
+## Pokemon Data
+
+I found out about this untidy Pokémon data from **Bryan Persaud's** discussion post. I will be transforming this data for my second part of the project 2. Containing generations 1 - 7 of basic Pokémon stats, split out from a Kaggle.com dataset originally created by Alberto Barradas, Pokémon with stats. 
+
+[Click here for pokemonData](https://github.com/lgreski/pokemonData)  
+
+## Data Transformation  
+
+### Fetch Data  
+
+I downloaded the .csv file from the above github site and will import into R to get ready for my data transformation. My goal is to find types of pokemon that are good for attack, defense and speed by analyzing this data.
+
+```{r}
+pokemon_data <- read.csv("Pokemon.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE )
+head(pokemon_data)
+# Getting rid of the outlier, Mega pokemon
+
+pokemon_data2 <- pokemon_data[-grep("Mega", pokemon_data$Name),]
+p <- subset(pokemon_data2, select = Name:Speed)
+# some prior analysis based on Attack, Defense and Speed.
+par(mfrow=c(2,2))
+hist(p$Attack)
+hist(p$Defense)
+hist(p$Speed)
+hist(p$HP)
+
+```
+### Inspect Data
+
+I am inspecting the pokemon data set using **glimpse()**
+All the columns runs down on the left side while all the data runs across. Also **summary()** functions gives us the summary of all the data including mean and median of data. 
+
+```{r}
+glimpse(pokemon_data)
+```
+```{r}
+summary(pokemon_data)
+```
+### Transform Data
+
+I am using some dplyr and tidyr functions to transform data. First I am using **select()** functions to fetch some data that I like to look closely. Then I will use **gather()** to turn wide data to long data.
+
+```{r}
+# I am selecting few columns that I am interested in.
+pokemon_selection <- select(pokemon_data, Name, Attack, Defense, Speed, HP)
+print(pokemon_selection)
+```
+
+
+```{r}
+pokemon_selection_tidy <- gather(pokemon_selection, "Stat", "Score", 2:5)
+head(pokemon_selection_tidy)
+```
+
+More tidying with 4 different subsets for pokemon types based on Attack, Defense, Speed and Horse Power  
+
+```{r}
+tidyp<-data.frame(subset(pokemon_selection_tidy,select = Name:Score),"Score"=as.numeric(str_sub(pokemon_selection_tidy$Score,1,2)))
+By_Type<-aggregate(subset(tidyp,select=Score),by=list(tidyp$Name,tidyp$Stat),FUN=median)
+
+Attack<-subset(By_Type,Group.2=="Attack")
+Deffense<-subset(By_Type,Group.2=="Defense")
+HorsePower<-subset(By_Type,Group.2=="HP")
+Speed<-subset(By_Type,Group.2=="Speed")
+
+Attack
+Deffense
+HorsePower
+Speed
+
+```
+
+### Analyze Data  
+
+I will be using my subset data to analyze my pokemon data based on their attack, deffense, speed and horse power.
+
+```{r}
+ggplot(tidyp, aes(x = tidyp$Stat, y = tidyp$Score, fill = as.character(Stat))) +
+  geom_bar(stat = "Identity", position = "dodge") +
+  scale_fill_brewer(palette = "Set1") +
+  theme(axis.text.x=element_text(angle = 0, vjust = 0.5)) +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+  ggtitle("Pokemon Stats and Scores") +
+  xlab("Stat") +  ylab ("Scores of Pokemon") +
+  coord_flip()
+
+```
+
+
+This shows that Highest scores are reported based on the pokemon horsepower.  
+
+# Dataset 3  
+
+## Stock Market Data
+
+My last dataset is on [Stock Market Data](https://www.kaggle.com/souravroy1/stock-market-data) that was mentioned in **Farhana Zahir's** week 5 discussion post. This dataset contains data from a list of Indian stocks in NSE. It includes a collection of well performing stocks with all the data necessary to predict which stocks to buy, hold, or exit. 
+
+![](stockmarket.jpg)
+
+## Data Transformation
+
+The dataset contains 20 columns and is basically the trading data of the market on a single day. The columns contain the ticker, sector, the last traded price, high price, low price and a bunch of other price points and valuation metrics on that particular trading day.
+Let's see how we can transform these data for a batter analysis.
+
+### Fetch Data
+
+```{r}
+stock_data <- read.csv("stock_market_data.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+head(stock_data)
+```
+
+### Inspect Data
+
+This inspection of data will help us to understand what type of transformation this dataset need. This dataset consist of 1568 records. This requires great deal of cleansing.
+
+```{r}
+dim(stock_data)
+```
+```{r}
+colnames(stock_data)
+```
+### Clean the data
+
+Even though I am not very familiar with stock market or any type of financial field, I decided to do some research prior to this section in order to understand some terms. Based on what I learn, I decided to select few columns (sector, Yearly gainer, PE ratio, PAT(Profit after Tax), etc.) that will help me to understand the stock market trends. 
+
+```{r}
+# New dataframe with few columns that helps to analyze data easily.
+stocks <- stock_data[,c(1:3, 6:9, 12, 20, 25)]
+head(stocks)
+```
+
+```{r}
+# replacing #N/A fields with NA
+make.true.NA <- function(x) if(is.character(x)||is.factor(x)){
+                                  is.na(x) <- x=="#N/A"; x} else {
+                                  x}
+stocks[] <- lapply(stocks, make.true.NA)
+head(stocks)
+```
+```{r}
+dim(stocks)
+```
+### Data summary
+
+```{r}
+stocks$Last.Traded.Price <- as.numeric(stocks$Last.Traded.Price)
+```
+
+```{r}
+stocks <- stocks[!is.na(stocks$Sector),]
+summary(stocks$Last.Traded.Price)
+```
+
+### Analyze Data
+
+ITs time to check the stock market trend. I am considering **PeRatio** to decide what sector is best to invest right now.
+
+How does PE help?
+
+Understanding PE gives the investors an idea if the stock has sufficient growth potential. Stocks with low PE can be considered good bargains as their growth potential is still unknown to the market.
+
+If the PE is high, it warns of an over-priced stock. It means the stock's price is much higher than its actual growth potential. So these stocks are more liable to crash drastically. This was evident in the recent market crash when the stocks of all Reliance companies fell sharply.
+
+This will allow savvy investors to sell their holdings before the stock price crashes.
+
+```{r}
+ggplot(stocks, aes(Sector, PeRatio, col = PeRatio)) +
+  geom_point()+
+  theme(axis.text.x = element_text(angle=90))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
