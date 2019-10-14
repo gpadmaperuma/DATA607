@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<book-table>
+	<book>
+		<ID>01</ID>
+		<Title>Internet & World Wide Web How to Program</Title>
+		<Author>P.J. Deitel, H. M. Deitel</Author>
+		<ISBN-13>9780131752429</ISBN-13>
+		<Publisher>Pearson Education, Inc.</Publisher>
+		<Publication_date>2008</Publication_date>
+		<Pages>1373</Pages>
+		<Related_Subject>Web Programming</Related_Subject>
+	</book>
+	<book>
+		<ID>02</ID>
+		<Title>A First Course in Database Systems</Title>
+		<Author>Jeffrey D. Ullman, Jennifer Widom</Author>
+		<ISBN-13>9789332535206</ISBN-13>
+		<Publisher>Pearson India</Publisher>
+		<Publication_date>2007</Publication_date>
+		<Pages>504</Pages>
+		<Related_Subject>Database Programming</Related_Subject>
+	</book>
+	<book>
+		<ID>03</ID>
+		<Title>Data Science for Business</Title>
+		<Author>Foster Provost, Tom Fawcett</Author>
+		<ISBN-13>9781449361327</ISBN-13>
+		<Publisher>O'Reilly Media</Publisher>
+		<Publication_date>12/19/2013</Publication_date>
+		<Pages>369</Pages>
+		<Related_Subject>Data Science</Related_Subject>
+	</book>
+</book-table>

@@ -1,0 +1,37 @@
+{
+    "book-table": {
+        "book": [
+	
+            {
+                "ID":"01",
+                "Title": "Internet & World Wide Web How to Program",
+                "Author": "P.J. Deitel, H. M. Deitel",
+                "ISBN-13": "9780131752429",
+		"Publisher": "Pearson Education, Inc.",
+		"Publication_date": "2008",
+		"Pages": "1373",
+		"Related_Subject": "Web Programming"
+            },
+            {
+		"ID": "02",
+		"Title": "A First Course in Database Systems",
+		"Author": "Jeffrey D. Ullman, Jennifer Widom",
+		"ISBN-13": "9789332535206",
+		"Publisher": "Pearson India",
+		"Publication_date": "2007",
+		"Pages": "504",
+		"Related_Subject": "Database Programming"
+            },
+	    {
+		"ID": "03",
+		"Title": "Data Science for Business",
+		"Author": "Foster Provost, Tom Fawcett",
+		"ISBN-13": "9781449361327",
+		"Publisher": "O'Reilly Media",
+		"Publication_date": "12/19/2013",
+		"Pages": "369",
+		"Related_Subject": "Data Science"
+            }
+        ]
+    }
+}
