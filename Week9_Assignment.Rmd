@@ -1,0 +1,69 @@
+---
+title: "DATA607_Week9"
+author: "Don Padmaperuma (Geeth)"
+date: "10/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment - Web APIs
+
+The New York Times web site provides a rich set of APIs, as described here: https://developer.nytimes.com/apis
+You’ll need to start by signing up for an API key.
+Your task is to choose one of the New York Times APIs, construct an interface in R to read in the JSON data, and
+transform it into an R DataFrame.
+
+## Libraries
+
+```{r}
+library(RCurl)
+library(dplyr)
+library(stringr)
+library(httr)
+library(jsonlite)
+library(DT)
+library(rvest)
+library(kableExtra)
+```
+
+
+## Read in Json Data - Stephen King Books
+
+Getting a list of best seller books where author is Stephen King from the Book API in New York Times  
+```{r}
+jsonFile1 <- "https://api.nytimes.com/svc/books/v3/reviews.json?author=Stephen+King&api-key=6Ll00ebXWXzaPjr4FQ3yMhevWwY0CHr0"
+
+```
+
+## Creating a Data frame
+
+Creating a data frame using the json file that we just retrieved from NYT Books API
+```{r}
+Stephen_King_Books <- tbl_df(as.data.frame(fromJSON(jsonFile1)))
+Stephen_King_Books %>% 
+  kable ()%>%
+  kable_styling(bootstrap_options = "striped", font_size = 10) %>% 
+  scroll_box(height = "500px", width = "100%")
+```
+
+## Read in Json Data - Best Seller History Books  
+
+Getting a list of Best seller history books  
+```{r}
+jsonFile2 <- "https://api.nytimes.com/svc/books/v3/lists/best-sellers/history.json?&api-key=6Ll00ebXWXzaPjr4FQ3yMhevWwY0CHr0"
+```
+
+## Creating a Data frame  
+
+Converting the json file to a dataframe
+```{r}
+BestSeller <- tbl_df(as.data.frame(fromJSON(jsonFile2)))
+BestSeller %>% 
+  kable ()%>%
+  kable_styling(bootstrap_options = "striped", font_size = 10) %>% 
+  scroll_box(height = "500px", width = "100%")
+```
+
