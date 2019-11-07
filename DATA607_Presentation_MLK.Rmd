@@ -1,0 +1,147 @@
+---
+title: "DATA607_Presentation"
+author: "Don Padmaperuma"
+date: "11/3/2019"
+output: 
+  html_document:
+    toc: True
+    toc_float: true
+  
+---
+## Representing and Text Mining
+
+In this presentation I am focusing on one particular sort of data, which is text data. In principle text is just another form of data. I am taking [I Have A Dream Speech by Martin Luther King Jr.](https://www.huffpost.com/entry/i-have-a-dream-speech-text-martin-luther-king-jr_n_1207734) in a text format to use in this presentation. These texts are unstructured data. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries  
+
+I have used several packages for this presentation that are specifically there for natural language processing, tidying data and text mining. Using tidy tools such as tidytext and dplyr make text mining process much easier.   
+
+```{r}
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidytext)
+library(extrafont)
+library(wordcloud)
+library(RColorBrewer)
+
+```
+
+## Read in data from a text file 
+
+My first step was to find **I Have a Dream** speech by **Marting Luther King Jr.** online and save it as a text file. Main purpose of this presentation is to use text data for analysis. After that this text will go over tidying process to make it clean to do our text mining process. 
+
+```{r}
+# Read in data
+MLK_Speech <- read_lines("I_have_a_dream_MLK.txt")
+
+# Splits chunk of text into lines
+MLK_text <- data.frame(line = 1:length(MLK_Speech), text = MLK_Speech, stringsAsFactors = FALSE)
+
+# filter blank lines (even rows)
+MLK_text <- MLK_text %>% filter(line %% 2 == 1) %>%
+  mutate(line = 1:nrow(.)) #renumber lines
+
+# Make single word vector
+MLK_text <- MLK_text %>%
+  unnest_tokens(word, text)
+
+# Now remove all the stop words using "anti_join"
+tidy_MLK <- MLK_text %>%
+  anti_join(stop_words)
+```
+
+```{r}
+# count the frequency of each word
+tidy_MLK %>%
+  count(word, sort = TRUE)
+```
+
+## Bar Graph to show highest frequency words   
+
+Once we are done with all the text analysis we can use this data to visualize most frequent words in **I Have a Dream** speech. Here we are using a bar graph to show our results. We can clearly see that words **freedom**, **ring** and **dream** at the top of the chart as his most frequently used words in the speech.   
+
+```{r}
+# count frequency of word used in the speech by most to least words that used more than twice.
+tidy_MLK %>%
+  count(word, sort = TRUE) %>%
+  filter(n >2) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word,n))+
+  geom_bar(stat = "identity", fill = "steelblue")+
+  xlab(NULL)+
+  coord_flip()+ labs(x="Words used more than 2 times", y= "word frequency", title = "I have a Dream Speech, MLK Jr. (1963)")
+```
+
+## Wordcloud with higest frequency words   
+
+Another way to show our bag of words.   
+
+```{r}
+tidy_MLK <- tidy_MLK %>%
+  count(word, sort = TRUE) %>%
+  mutate(word = reorder(word, n))
+```
+
+```{r}
+wordcloud(words = tidy_MLK$word, freq = tidy_MLK$n, min.freq = 2, max.words = 200, random.order = FALSE, rot.per = 0.35,
+          colors = brewer.pal(8, "Dark2"))
+```
+
+## Further Analysis
+
+You can have a look at the frequent terms in the MLK_speech matrix as follow. We want to find words that occur at least three times :  
+
+```{r}
+library(NLP)
+library(tm)
+
+MLK_Speech_corpus = Corpus(VectorSource(MLK_Speech))
+
+tdm = TermDocumentMatrix(MLK_Speech_corpus, 
+                         control = list(removePunctuation = TRUE, 
+                                      stopwords =  TRUE, 
+                                      removeNumbers = TRUE, tolower = TRUE))
+
+findFreqTerms(tdm, lowfreq = 3)
+```
+
+Also we can analyze the association between frequent terms using findAssocs() function. Below R code identifies the words that associated with word **freedom** in **I Have a Dream** speech.  
+
+```{r}
+findAssocs(tdm, terms = "freedom", corlimit = 0.3)
+```
+
+Next step is to do a sentiment analysis on the speech using get_sentiments() that comes with tidytext package. This helps us to get specific sentiment lexicons in a tidy format, with one row per word. For this example I am using **bing** general-purpose lexicon.    
+
+This will identify word as positive or negative sentiments and sort them according to their frequency.    
+
+```{r}
+library(tidyr)
+bing <- get_sentiments("bing")
+MLK_Wordcount <- MLK_text%>%
+  inner_join(bing)%>%
+  count(word, sentiment, sort = TRUE)
+
+MLK_Wordcount
+```
+
+Now it is easy to graph the most common positive and negative words in this speech. One advantage of having a data frame with both sentiment and word is that we can analyze word count that contribute to each sentiment.     
+
+```{r}
+MLK_Wordcount %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal()+
+  labs(y = "Contribution to sentiment")
+```
+
+## Conclusion  
+
+This visualization shows us that MLK Jr. used more positive words than negative words in his speech. May be this is one of the reasons why this speech is more memorable and impacted largely on civil right movement in 1960s. His positive word usage resulted the "I Have a Dream" speech to be so powerful, even after more than 50 years.   
