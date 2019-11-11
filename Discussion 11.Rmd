@@ -1,0 +1,60 @@
+---
+title: "DATA607_Discussion 11"
+author: "Don Padmaperuma (Geeth)"
+date: "11/11/2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    self_contained: yes
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<img src="banner.jpg"/>  
+
+
+## Introduction  to Recommender Systems   
+
+Main purpose of having a recommender system is to try narrow down choices for consumers by suggesting items that they are most likely to by based on the recent search histories. Most of e-commerce websites from Amazon to Netflix, from Facebook to Linkedin uses recommedation algorithms to get to customers using their own interests. In fact, big chunk of Amazon's revenue is from their recommendation systems. For my further analysis on Recommender System I will use [Youtube](https://www.youtube.com/)   
+
+## Scenario Design Analysis  
+
+### Who are your target audience?  
+
+Youtube has a variety of target audience, including kids, men and women. Given that **Youtube** is the second most visited website in the US according to [Bustle](https://www.bustle.com/p/the-most-popular-websites-in-the-united-states-reveal-a-lot-about-our-online-habits-44974), recommending fresh content for their audience a tough job. As a part of extending their target audience **Youtube** introduced **Youtube Kids** in 2015.  
+
+### What are their key goals?  
+
+Their key goal is to provide all their audience with videos of their choice and interest. Also to provide a platform for those who wants to be a **Youtuber** and for organization who wants to use youtube as a social media or marketing tool.   
+
+### How can you help them accomplish those goals?  
+
+Youtube uses recommender system to identify related videos for their audience. Based on their target audience browsing history youtube is capable of suggesting videos for their users. With channel subscriptions users get alerts when there is a new vidoe is uploaded from that channel. Also  **Youtube** has allowed its users to choose the topics of your recommendations. As **Youtube** is also part of **Google** now, activities on **Google** and **Chrome** is also influence **Youtube** search recommendations.  
+
+## Reverse Engineering  
+  
+**Youtube** recommender system is comprised of two neural networks. One is for **Candidate generation** and other one for **ranking**. The candidate generation network takes events from the user's **Youtube** browse history as input and create a small subset of videos out of a large corpus. These candidates are relevent to users with high precision. Next process is to get these hundreds of candidate videos to get filtered through the ranking network to determine their importance. The ranking network fulfill this task by assigning a score to each candidate video according to its objective function. The highest scoring videos are presented to the user. This process is to simplify user recommendation from millions of videos to few number of vidoes that user really interested in.   
+  
+<img src="youtube.png"/>
+[source](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)    
+
+**This figure shows how Youtube recommendation system retrieve candidate videos and rank before present it to users.** 
+
+## Recommendations  
+
+Even though there is a seperate app for kids in **Youtube**, many children uses the regular **Youtube** app. Therefor I feel like there should me more filtering in their recommendation system in order to provide quality vidoes for kids. As it appears, there is only two networks of filtering (Candidate and ranking) happening right now. I think it is wise to add another layer of filtering inorder to retrieve appropriate vidoes for everyone. Improve existing settings where user have access to choose their own recommendation would be nice too.  
+
+## References  
+
+https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf
+https://towardsdatascience.com/the-remarkable-world-of-recommender-systems-bff4b9cbe6a7  
+https://towardsdatascience.com/how-youtube-recommends-videos-b6e003a5ab2f
+
+
+
+
