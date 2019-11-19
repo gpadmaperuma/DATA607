@@ -1,0 +1,237 @@
+---
+title: "DATA607-Project4"
+author: "Don Padmaperuma"
+output: 
+ html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction  
+
+using a corpus of labeled spam and ham (non-spam) e-mails to predict whether or not a new document is spam. Start with a spam/ham dataset, then predict the class of new documents (either withheld from the training dataset or from another source such as your own spam folder).  
+
+## Loading packages
+
+```{r}
+library(usethis)
+library(devtools)
+```
+
+```{r}
+install_github("cran/maxent")
+install_github("cran/RTextTools")
+```
+
+
+```{r}
+library(tm)
+library(caret)
+library(wordcloud)
+library(tidyverse)
+library(stringr)
+library(RTextTools)
+```
+
+## Reading and Prepping data  
+
+I retrieve the ham and spam emails from (https://spamassassin.apache.org/old/publiccorpus/). I chose the two folders 20021010_spam and 20021010_easy_ham that includes spam and ham emails.
+
+```{r}
+spam_dir <- 'C:/Users/Udaya/Documents/Geeth/DATA607/Project4/20021010_spam/spam/'
+ham_dir <- 'C:/Users/Udaya/Documents/Geeth/DATA607/Project4/20021010_easy_ham/easy_ham/'
+```
+
+We then need to create text Corpuses from the files. The tidying procedures are similar to those found in the course text. For this project I am using VCorpus() function that is there for text mining with the content_transformer() function wrapped around the tm_map variables.  
+
+```{r}
+spam <- spam_dir %>%DirSource()%>% VCorpus()
+ham <- ham_dir %>% DirSource() %>% VCorpus()
+meta(spam[[1]])
+```
+```{r}
+meta(ham[[1]])
+```
+
+```{r}
+#Now we can tidy our Corpuses
+spam <- spam %>% tm_map(content_transformer(PlainTextDocument))
+spam <- spam %>% tm_map(content_transformer(removePunctuation))
+spam <- spam %>% tm_map(content_transformer(tolower))
+spam <- spam %>% tm_map(content_transformer(removeNumbers))
+spam <- spam %>% tm_map(content_transformer(stemDocument),  language = 'english') #Stemming seems to truncate words
+spam <- spam %>% tm_map(removeWords, c('receiv', stopwords('english')))
+ham <- ham %>% tm_map(content_transformer(PlainTextDocument))
+ham <- ham %>% tm_map(content_transformer(removePunctuation))
+ham <- ham %>% tm_map(content_transformer(tolower))
+ham <- ham %>% tm_map(content_transformer(removeNumbers))
+ham <- ham %>% tm_map(content_transformer(stemDocument),  language = 'english') #Stemming seems to truncate words
+ham <- ham %>% tm_map(removeWords, c('receiv', 'spamassassin', stopwords('english')))
+ham_spam <- c(ham,spam)
+#This loop places a meta data label on all documents as ham or spam, the c() function puts the two Corpuses back to Back
+#So we can use their lengths to index the loops.
+for(i in 1:length(ham)){
+  meta(ham_spam[[i]],"classification") <- "Ham"
+}
+for(i in (length(ham)+1):(length(spam)+length(ham))){
+  meta(ham_spam[[i]],"classification") <- "Spam"
+}
+for(i in 1:5){
+  ham_spam <- sample(ham_spam)
+}# This scramble the corpus so it is not all Ham then all Spam
+meta(ham_spam[[127]])
+```
+
+## Document Term Matrices 
+
+This is to analyze the statistical information of the text document. This function has bunch of dummy variables that tell us if a specific term appear in a specific document.   
+
+```{r}
+spam_dtm <- spam %>% DocumentTermMatrix()
+spam_dtm <- spam_dtm %>% removeSparseTerms(1-(10/length(spam)))
+spam_dtm
+```
+The summary of Document Term Matrix is informative. We have 1437 different items in 502 documents. There are 58844 non-zero and 661093 sparse entries.  
+
+```{r}
+ham_dtm <- ham %>% DocumentTermMatrix()
+ham_dtm <- ham_dtm %>% removeSparseTerms(1-(10/length(ham)))
+ham_dtm
+```
+In ham corpus, We have 3862 different items in 2551 documents. There are 314878 non-zero and 9537084 sparse entries.   
+```{r}
+ham_spam_dtm <- ham_spam %>% DocumentTermMatrix()
+ham_spam_dtm <- ham_spam_dtm %>% removeSparseTerms(1-(10/length(ham_spam)))
+ham_spam_dtm
+```
+
+This is a combination of ham and spam corpus.   
+
+## Summary Statistics  
+
+First we will look at the Spam emails. This will show the top 10 frequently used words in the spam corpus.   
+
+```{r}
+spam_freq <-  spam_dtm %>% as.matrix() %>% colSums()
+length(spam_freq) #Should be the same as term count, not document count.
+```
+
+```{r}
+spam_freq_ord <- spam_freq %>% order(decreasing = TRUE)
+#spam_freq_ord is a vector of the indicies of spam_freq in order of highest word count to lowest.
+par(las=1)
+#This will create a bar plot of the top 10 words in the spam Corpus
+barplot(spam_freq[spam_freq_ord[1:10]], horiz = TRUE, col=terrain.colors(10), cex.names=0.7)
+```
+
+```{r}
+#Spam Cloud
+wordcloud(spam, max.words = 75, random.order = FALSE, random.color = TRUE,colors=palette())
+```
+
+Next we look at the ham email corpus where we will see more calendar references with days and months terms as most frequent words.   
+
+```{r}
+ham_freq <-  ham_dtm %>% as.matrix() %>% colSums()
+length(ham_freq) #Should be the same as term count, not document count.
+```
+
+```{r}
+ham_freq_ord <- ham_freq %>% order(decreasing = TRUE)
+#ham_freq_ord is a vector of the indicies of ham_freq in order of highest word count to lowest.
+par(las=1)
+#This will create a bar plot of the top 10 words in the ham Corpus
+barplot(ham_freq[ham_freq_ord[1:10]], horiz = TRUE,col=terrain.colors(10),cex.names=0.7)
+```
+
+```{r}
+#Ham Cloud
+wordcloud(ham, max.words = 75, random.order = FALSE, random.color = TRUE,colors=palette())
+```
+
+## Further Analysis  
+
+We begin by creating a container of the data that needs to be input into the models. Then we will use the Support Vector Machine supervised learning model to classify emails in the test set as ham or spam. This technique works by classifying each document as a position vector and it looks for a plane through the phase space that creates the largest distance between the two classes in the training set, here ‘spam’ emails and ‘ham’ emails. It then classifies each document in the test set by it’s position relative to the plane of separation.
+
+```{r}
+lbls <- as.vector(unlist(meta(ham_spam, type="local", tag = "classification")))
+head(lbls)
+```
+
+```{r}
+N <- length(lbls)
+container <- create_container(ham_spam_dtm, labels = lbls, trainSize = 1:501,testSize = 502:N,virgin = TRUE)
+```
+
+### Support Vector Machine  
+
+SVM uses a supervised learning approach, which means it learns to classify unseen data
+based on a set of labeled training data, such as corporate documents. The initial set of
+training data is typically identified by domain experts and is used to build a model that can
+be applied to any other data outside the training set. In this scenario we will use SVM to classify emails in the test set as spam and ham.   
+
+```{r}
+suppressMessages(suppressWarnings(library("RTextTools")))
+svm_model <- train_model(container, "SVM")
+svm_result <- classify_model(container,svm_model)
+head(svm_result)
+```
+
+```{r}
+prop.table(table(svm_result[,1] == lbls[502:N]))
+```
+According to the calculations SVM model gives over 99% accuracy rate.  
+
+### Random Forest
+
+Next step is to use random forest method with the training set. It uses the training set to create multiple decition trees.   
+
+```{r}
+tree_model <- train_model(container, "TREE")
+tree_result <- classify_model(container, tree_model)
+head(tree_result)
+```
+
+```{r}
+prop.table(table(tree_result[,1] == lbls[502:N]))
+```
+Same as the SVM model, Random Forest model also have over 99% accuracy rate.  
+
+### Maximum Entropy  
+
+The maximum entropy principle (MaxEnt) states that the most appropriate distribution to model a given set of data is the one with highest entropy among all those that satisfy the constrains of our prior knowledge.We start with an assumption that the properties in population are normally distributed with known mean and standard deviation. Max Entropy builds these distributions with the training set. 
+
+```{r}
+maxent_model <- train_model(container, "MAXENT")
+max_result <- classify_model(container, maxent_model)
+head(max_result)
+```
+
+```{r}
+prop.table(table(max_result[,1] == lbls[502:N]))
+```
+This method also gives us more than 99% accuracy with Max entropy. 
+
+## Conclusion   
+
+Accuracy of individual machine learning models are over 99% which is an excellent outcome. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
