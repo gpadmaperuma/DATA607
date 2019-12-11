@@ -1,0 +1,314 @@
+---
+title: "DATA 607 Final Project - UN Population Data"
+author: "Don Padmaperuma (Geeth)"
+date: "10/17/2019"
+output:
+  html_document:
+    toc: True
+    toc_float: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Preparation
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(dplyr)
+library(psych)
+library(plotly)
+```
+
+
+Populatio Growth Data set  
+
+```{r}
+#Original Population Growth dataset (pg)
+# Reading the original .csv file that downloaded from http://data.un.org/
+
+pg_original_file <- read.csv("https://raw.githubusercontent.com/gpadmaperuma/DATA606/master/SYB62_T03_201907_Population%20Growth%2C%20Fertility%20and%20Mortality%20Indicators.csv", header = TRUE, skip = 1)
+head(pg_original_file) %>% kable()
+```
+
+Population Data set  
+
+```{r}
+#Original population dataset(p)
+p_original <- read.csv("https://raw.githubusercontent.com/gpadmaperuma/DATA606/master/Population%2C%20Surface%20Area%20and%20Density.csv", header = TRUE, skip = 1)
+head(p_original) %>% kable()
+```
+
+
+```{r}
+dim(pg_original_file)
+```
+
+```{r}
+dim(p_original)
+```
+
+
+## Research question 
+
+While analyzing these data I will try to find solutions to my two questions:  
+(1) Which Region has the highest Life Expectancy?
+(2) Is there a increase/decrease Population, fertility rate and infant mortality rate in these regions? 
+
+
+## Data collection 
+
+These data was obtained from the United Nations Database called [UNdata:A world of information](http://data.un.org/).    
+UNdata is a web-based data service for the global user community. These data are maintained by the Statistical Division of the Department of Economics and Social Affairs (UN DESA) of UN Secretariat. Most of the data sourced by UN partner organization such as UNICEF, UNDP, UNHCR, WHO etc.  
+
+## Data Source 
+
+[UNdata: A world of information](http://data.un.org/)
+
+The United Nations, [*Population Growth Fertility Mortality Indicators (2019)*](http://data.un.org/_Docs/SYB/PDFs/SYB62_T03_201907_Population%20Growth,%20Fertility%20and%20Mortality%20Indicators.pdf). Retrieved from (http://data.un.org/)
+
+## Variables  
+
+### Dependent Variable
+
+The responce variable for this dataset is *value* which is a quantitative variable.It holds all the population, fertility and mortality rates.  
+
+### Independent Variable
+
+Two Qualitative independent variables are the *Region/Country/Area* and *Series* and one quantitative independent variable is *year* that data was collected.  
+
+## Relevant summary statistics 
+
+summary statistics for each the variables and appropriate visualizations  
+
+```{r}
+#summary of original population growth file
+summary(pg_original_file)
+```
+
+```{r}
+#summary of original population file
+summary(p_original)
+```
+
+```{r}
+#Population Growth
+describe(pg_original_file)
+```
+
+```{r}
+#Population
+describe(p_original)
+```
+
+
+```{r}
+#Population Growth
+head(pg_original_file)
+```
+
+```{r}
+#Population
+head(p_original)
+```
+
+## Tidying data for easy visualization
+Original data includes values for both regions and countries. I will create two subsets one for regions and one for Countries. In this way it will be easy for us to visualize data in a more organized manner. 
+
+```{r}
+# Deleting unwanted columns from the original file and save as a new data frame.
+UN_PopulationGrowth <-
+  select(pg_original_file, -c("Region.Country.Area","Footnotes", "Source"))
+
+head(UN_PopulationGrowth)
+```
+
+```{r}
+UN_Population <-
+  select(p_original, -c("Region.Country.Area","Footnotes", "Source"))
+
+head(UN_Population)
+```
+
+### Creating a subset for Regions 
+
+```{r}
+#Population Growth by region
+PG_Region <- UN_PopulationGrowth %>%
+  slice(22:564)
+
+names(PG_Region)[names(PG_Region) == "X"] <- "Region"
+
+head(PG_Region)
+```
+
+
+```{r}
+#Population by Region
+Total_Population_Region <- UN_Population %>%
+  slice(30:870)
+
+names(Total_Population_Region)[names(Total_Population_Region) == "X"] <- "Region"
+head(Total_Population_Region)
+```
+
+```{r}
+PG_by_Region <- PG_Region %>%
+  spread(key = Series, value = Value)
+
+names(PG_by_Region)[names(PG_by_Region) == "Infant mortality for both sexes (per 1,000 live births)"] <- "Infant_Mortality"
+names(PG_by_Region)[names(PG_by_Region) == "Life expectancy at birth for both sexes (years)"] <- "Life_Expectancy"
+names(PG_by_Region)[names(PG_by_Region) == "Maternal mortality ratio (deaths per 100,000 population)"] <- "Maternal_mortality_ratio"
+names(PG_by_Region)[names(PG_by_Region) == "Life expectancy at birth for males (years)"] <- "LifeExpectancy_males"
+names(PG_by_Region)[names(PG_by_Region) == "Life expectancy at birth for females (years)"] <- "LifeExpectancy_females"
+names(PG_by_Region)[names(PG_by_Region) == "Population annual rate of increase (percent)"] <- "Population_increase_rate"
+names(PG_by_Region)[names(PG_by_Region) == "Total fertility rate (children per women)"] <- "Total_fertility_rate"
+names(PG_by_Region)[names(PG_by_Region) == "X"] <- "Region"
+```
+
+```{r}
+head(PG_by_Region)
+```
+
+```{r}
+P_by_Region <- Total_Population_Region %>%
+  spread(key = Series, value = Value)
+
+names(P_by_Region)[names(P_by_Region) == "Population mid-year estimates (millions)"] <- "Pop.est.total"
+names(P_by_Region)[names(P_by_Region) == "Population mid-year estimates for males (millions)"] <- "Pop.est.males"
+names(P_by_Region)[names(P_by_Region) == "Population mid-year estimates for females (millions)"] <- "Pop.est.females"
+names(P_by_Region)[names(P_by_Region) == "Sex ratio (males per 100 females)"] <- "m.to.f.ratio"
+
+P_by_Region <-
+  select(P_by_Region, -c("Population aged 0 to 14 years old (percentage)","Population aged 60+ years old (percentage)", "Surface area (thousand km2)"))
+
+head(P_by_Region)
+```
+
+### Data Visualization 
+
+Using some data such as Infant mortality rate, Life expectancy for both sexes, males,and females, I am creating some interacting scatter-plots for better understand of these populations around the world. All the data are for the years for major regions: 2005, 2005, 2015. 
+
+
+```{r}
+# Life expectancy for both sexes by region (Main Regions)
+g<-ggplot(subset(PG_by_Region, Region %in% c("Africa", "Asia", "Australia and New Zealand", "Europe", "Caribbean", "South America", "Northern America")),
+          aes(x = Life_Expectancy, y = Region, text = Year))+
+  geom_point(aes(color=Region))
+ggplotly(g)
+
+```
+
+
+```{r}
+# Infant mortality rate by region
+g <- ggplot(PG_by_Region, aes(x = Infant_Mortality, y = Region, text = Year))+
+  geom_point(aes(color=Region))
+
+knitr::opts_chunk$set(fig.width=12, fig.height=8)
+ggplotly(g)
+```
+
+
+```{r, fig.width=10,fig.height=8}
+# Life expectancy for Males by region
+g<-ggplot(PG_by_Region, aes(x = LifeExpectancy_males, y = Region, fill = Region, text = Year))+
+  geom_point(aes(color=Region))
+
+knitr::opts_chunk$set(fig.width=12, fig.height=8)
+ggplotly(g)
+```
+
+```{r, fig.width=10,fig.height=8}
+# Life expectancy for Females by region
+g<-ggplot(PG_by_Region, aes(x = LifeExpectancy_females, y = Region, text = Year))+
+  geom_point(aes(color=Region))
+
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+ggplotly(g)
+```
+
+
+```{r}
+g <- ggplot(PG_by_Region, aes(x = Region, y = Life_Expectancy, fill = as.character(Year))) +
+  geom_bar(stat = "Identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(PG_by_Region$Life_Expectancy,0))), hjust=-0.5, color="black", position = position_dodge(1), size = 2)+
+  scale_fill_brewer(palette = "Paired") +
+  theme(axis.text.x=element_text(angle = 0, vjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+  ggtitle("Life Expectancy by Region") +
+  xlab("Regions") +  ylab ("Age in Years") + 
+  coord_flip()
+ggplotly(g)
+```
+
+### Answer for Research Question 1  
+
+(1) Which Region has the highest Life Expectancy?  
+
+Above graph for Life expectancy by region clearly shows that Australia and New Zealand region with the highest life expactancy of age 82. This region is on the top for the last 15 years with highest Life expectancy over age 80.   
+
+
+
+```{r}
+# Life expectancy for both sexes by region (Main Regions)
+g<-ggplot(subset(PG_by_Region, Region %in% c("Africa", "Asia", "Australia and New Zealand", "Europe", "Caribbean", "South America", "Northern America")),
+          aes(x = Life_Expectancy, y = Region, text = Year))+
+  geom_point(aes(color=Region))
+ggplotly(g)
+```
+
+
+### Data Visualization with merged dataframs  
+
+Comparing Population Growth and Population data to see the relationship between Fertility Rate, Infant Mortality and Population growth rate. Fertility rate, which shows the children per woman, has clearly declined within the time frame 2005 to 2010. This has impacted on slow increase in population increase rate. Also Infant Mortality rates are also have declined. This reflects in decreased fertility rates as well. **In an environment with high child mortality women will give birth to more children than they want to ensure against the loss of children** (source: https://ourworldindata.org/fertility-rate) 
+
+```{r}
+#Merged population data for 2005 and 2010  
+merged_population_data <- PG_by_Region %>% 
+  inner_join(P_by_Region, by = c("Region" = "Region", "Year" = "Year"))
+head(merged_population_data) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% 
+  scroll_box(width="100%",height="400px")
+```
+```{r}
+summary(merged_population_data)
+```
+
+
+```{r}
+population_subset <- merged_population_data[c(1:3,8:9)]
+head(population_subset)
+```
+
+```{r}
+library(ggpubr)
+Population_Increase <- ggplot(population_subset, aes(y=Region, x=Population_increase_rate, fill = Year))+
+  geom_point(color = "blue")
+
+Fertility_Rate <- ggplot(population_subset, aes(y=Region, x=Total_fertility_rate, fill = Year))+
+  geom_point(color = "Red")
+
+Infant_Mortality <- ggplot(population_subset, aes(y=Region, x=Infant_Mortality, fill = Year))+
+  geom_point(color = "Green")
+
+figure <- ggarrange(Population_Increase, Fertility_Rate, Infant_Mortality,
+                    labels = c("A", "B", "c"),
+                    ncol = 3, nrow = 3, scales = "Free")
+figure
+```
+
+### Answer for Research Question 2  
+
+(2) Is there a increase/decrease Population, fertility rate and infant mortality rate in this region?   
+                             Years  Infant.Mortalit    Pop.increase    Fertility
+Australia and New Zealand	   2005	  5.0247	           1.242	         1.8043
+6	Australia and New Zealand	 2010	  4.5033	           1.741	         1.9850
+
+Infant Mortality rate decreased while population and fertility rate incrased. This is a good sign and probably a good indicators for their high life expectancy in that region. Overall all the regions have decrease in infant mortality and incrase in population increase and fertility, just in a lower speed than it used to be.   
+
+
