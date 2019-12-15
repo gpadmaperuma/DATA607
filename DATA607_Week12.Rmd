@@ -1,0 +1,192 @@
+---
+title: "DATA 607 Week 12 - NoSQL migration"
+author: "Don Padmaperuma"
+date: "11/30/2019"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction  
+For this assignment, I take information from a relational database (MySQL) and migrate it to a NoSQL database (MongoDB). For the relational database I am using **nycflights13** package. **nycflights13** package has airline on-time data for all flights departing NYC in 2013. Also includes useful 'metadata' on airlines, airports, weather, and planes.  
+
+```{r}
+library(DBI)
+library(RMySQL)
+library(tidyverse)
+library(knitr)
+library(mongolite)
+```
+
+## Inspect data from nycflights13  
+
+```{r}
+library(nycflights13)
+dim(nycflights13::airlines)
+```
+```{r}
+dim(nycflights13::airports)
+```
+```{r}
+head(nycflights13::airports)
+```
+## Export data into .csv files
+
+In order to convert the datasets into slq database, first we convert them to .csv files. After we export nycflights13 datasets into local file, we can switch to MySQL to load them into relational database using table Table data import wizard.  
+
+## Connecting to MySQL  
+
+```{r}
+
+sqldb <- dbConnect(MySQL(),
+                  user = "root", 
+                  password = "spring2019",
+                  dbname = "nycflights",
+                  host = "localhost"
+                     )
+tables <- dbListTables(sqldb)
+tables
+```
+
+```{r}
+# Query to load the data from airline and airport tables
+query <- sprintf("SELECT * FROM %s", tables)
+query
+```
+
+```{r}
+temp1 <- rep(list(NA), length(tables))            
+
+# load tables into temp dataframes
+for (j in 1:length(tables)) {
+    temp1[[j]] <- as_tibble(dbGetQuery(sqldb, query[j]))
+}
+
+temp1
+```
+
+```{r}
+# initialize temp tables
+temp2 <- rep(list(NA), length(tables))            
+
+# loop through each table and save into each collection
+for (j in 1:length(tables)) {
+    # connect to collection in mongodb 
+    temp2[[j]] <- mongo(collection = tables[j], db = "nycflights13")
+
+    # drop collection if already exists
+    if (temp2[[j]]$count() > 0) {
+        temp2[[j]]$drop() 
+    }
+
+    # insert data
+    temp2[[j]]$insert(temp1[[j]])
+
+    # stop if row counts are not identical
+    stopifnot(temp2[[j]]$count() == nrow(temp1[[j]]))
+}
+```
+
+Now we  have two tables airline and airport loaded as dataframes in temp 1.  
+
+## Migrating data into MongoDB  
+
+Save each dataframe as a separate collection in mongodb. And then inspect them to makesure all the data migrated correctly.   
+
+```{r}
+airlines <- mongo(collection = "airlines", db = "nycflights13")
+airports <- mongo(collection = "airports", db = "nycflights13")
+
+# inspect the data
+( airlines_data <- as_tibble(airlines$find()) )
+```
+
+```{r}
+( airports_data <- as_tibble(airports$find()) )
+```
+
+
+```{r}
+airlines_rs = dbSendQuery(sqldb, 'select * from airlines')
+airlines.df <- fetch(airlines_rs)
+kable(head(airlines.df))
+```
+
+
+```{r}
+airports_rs = dbSendQuery(sqldb, 'select * from airports')
+airports.df <- fetch(airports_rs)
+kable(head(airports.df))
+```
+```{r}
+data607 <- mongo("data607")
+```
+
+```{r}
+data607
+```
+## insert data  
+
+```{r}
+data607$insert(airports.df)
+```
+```{r}
+data607$insert(airlines.df)
+```
+## Number of Records inserted
+
+```{r}
+data607$count()
+```
+```{r}
+data607$iterate()$one()
+```
+
+## MySQL vs. MongoDB
+
+It is clear that both MySQL and MongoDB have their own advantages and disadvantages.  
+
+>Advantages of MongoDB:            
+
+Flexible Database         
+Sharding  
+High Speed  
+High Availability  
+Scalability  
+Ad-hoc Query support  
+Easy Environment Setup  
+
+>Disadvantages of MongoDB:  
+
+Joins not supported  
+High memory usage  
+Limited data size  
+Limited nesting  
+
+>Advantages of MySQL:  
+
+Affordability  
+Widely adopted (Extremely popular)  
+Increasing the performance of the application  
+Well supported software  
+
+>Disadvantages of MySQL:  
+
+Not suitable for large sized data  
+Hard to scale  
+
+
+
+
+
+
+
+
+
+
+
